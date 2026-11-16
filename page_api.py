@@ -6440,6 +6440,7 @@ class PrivateCompanionPageApi(
                     "items": visible_items,
                     "suppressed_warning_types": self._troubleshooting_suppression_payload(suppression_records, items),
                     "extension_control_plane": extension_status,
+                    "livingmemory_bridge": getattr(self.plugin, "_livingmemory_bridge_status", {}) or {},
                 }
             )
         except Exception as exc:

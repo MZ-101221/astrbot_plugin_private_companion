@@ -2172,6 +2172,24 @@
     "default": "recall_long_term_memory",
     "invisible": true
   },
+  "livingmemory_bridge_enabled": {
+    "description": "Legacy flat config: 启用长期记忆直连",
+    "type": "bool",
+    "default": true,
+    "invisible": true
+  },
+  "livingmemory_bridge_top_k": {
+    "description": "Legacy flat config: 桥接召回条数",
+    "type": "int",
+    "default": 4,
+    "invisible": true
+  },
+  "livingmemory_bridge_max_chars": {
+    "description": "Legacy flat config: 桥接记忆字符上限",
+    "type": "int",
+    "default": 1500,
+    "invisible": true
+  },
   "memory_companion_context_timeout_seconds": {
     "description": "Legacy flat config: 记忆上下文超时（秒）",
     "type": "float",
@@ -2217,13 +2235,13 @@
   "memory_companion_context_top_k": {
     "description": "Legacy flat config: 上下文召回条数",
     "type": "int",
-    "default": 5,
+    "default": 3,
     "invisible": true
   },
   "memory_companion_context_max_chars": {
     "description": "Legacy flat config: 上下文最大字符数",
     "type": "int",
-    "default": 900,
+    "default": 600,
     "invisible": true
   },
   "enable_bilibili_integration": {
@@ -7462,6 +7480,43 @@
           "enable_livingmemory_integration": true
         }
       },
+      "livingmemory_bridge_enabled": {
+        "description": "启用长期记忆直连",
+        "type": "bool",
+        "hint": "开启后每轮直接向 LivingMemory 检索与当前话题相关的长期记忆，并作为独立段落注入；关闭则回到只提示模型自行调用召回工具的行为。",
+        "default": true,
+        "condition": {
+          "enable_livingmemory_integration": true
+        }
+      },
+      "livingmemory_bridge_top_k": {
+        "description": "桥接召回条数",
+        "type": "int",
+        "hint": "每轮向 LivingMemory 请求的最大记忆条数。",
+        "default": 4,
+        "slider": {
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        "condition": {
+          "livingmemory_bridge_enabled": true
+        }
+      },
+      "livingmemory_bridge_max_chars": {
+        "description": "桥接记忆字符上限",
+        "type": "int",
+        "hint": "桥接渲染出的记忆段落最大字符数，超出即截断。",
+        "default": 1500,
+        "slider": {
+          "min": 200,
+          "max": 3000,
+          "step": 100
+        },
+        "condition": {
+          "livingmemory_bridge_enabled": true
+        }
+      },
       "memory_companion_context_timeout_seconds": {
         "description": "记忆上下文超时（秒）",
         "type": "float",
@@ -7534,7 +7589,7 @@
         "description": "上下文召回条数",
         "type": "int",
         "hint": "每次从“我会牢牢记住你”召回记忆时的最大条数。条数越多上下文越完整，但提示词更长、Token 消耗更多。",
-        "default": 5,
+        "default": 3,
         "slider": {
           "min": 1,
           "max": 10,
@@ -7548,7 +7603,7 @@
         "description": "上下文最大字符数",
         "type": "int",
         "hint": "单次召回记忆上下文的最大字符数上限。超过会被截断。建议 600-1200。",
-        "default": 900,
+        "default": 600,
         "slider": {
           "min": 240,
           "max": 1800,

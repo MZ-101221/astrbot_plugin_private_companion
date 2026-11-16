@@ -39,6 +39,10 @@ from .conversation_prompt_section import (
     render_prompt_sections,
 )
 from .persona_config import runtime_persona_setting
+from .companion.integrations.livingmemory_bridge import (
+    build_viewer_scope,
+    recall as livingmemory_bridge_recall,
+)
 from astrbot.api.event import AstrMessageEvent, MessageChain, filter
 try:
     from astrbot.api.message_components import At, Image, Plain, Record, Reply
@@ -890,6 +894,64 @@ class IntegrationStatusMixin:
                 content=joke_boundary,
             ),
         ]
+
+    async def _format_livingmemory_recall_section(
+        self,
+        *,
+        event: Any,
+        query: str,
+        is_private_chat: bool,
+    ) -> PromptSection | None:
+        """把 LivingMemory 召回的长期记忆渲染成一个注入段。
+
+        群聊只取事实型记忆（``episodic`` / ``factual``），关系与偏好留给
+        Companion 自己的关系账本；私聊不限制类型。任何失败都返回 ``None``，
+        只留一份诊断快照，不影响回复链路。
+        """
+        if not bool(getattr(self, "livingmemory_bridge_enabled", True)):
+            return None
+        text_query = _single_line(query, 200)
+        if not text_query:
+            return None
+        try:
+            platform = event.get_platform_name()
+            subject = event.get_sender_id()
+        except Exception:
+            platform = ""
+            subject = ""
+        viewer_scope = build_viewer_scope(platform, subject)
+        session_id = _single_line(getattr(event, "unified_msg_origin", ""), 220) or None
+        try:
+            timeout_seconds = float(
+                getattr(self, "memory_companion_context_timeout_seconds", 1.2) or 1.2
+            )
+        except (TypeError, ValueError):
+            timeout_seconds = 1.2
+        result = await livingmemory_bridge_recall(
+            self,
+            query=text_query,
+            top_k=int(getattr(self, "livingmemory_bridge_top_k", 4) or 4),
+            max_chars=int(getattr(self, "livingmemory_bridge_max_chars", 1500) or 1500),
+            timeout_seconds=timeout_seconds,
+            session_id=session_id,
+            persona_id=None,
+            extra_scopes=None,
+            viewer_scope=viewer_scope or None,
+            is_group=not is_private_chat,
+            allowed_atom_types=None if is_private_chat else ["episodic", "factual"],
+        )
+        snapshot = result.diagnostics()
+        snapshot["at"] = int(time.time())
+        self._livingmemory_bridge_status = snapshot
+        text = result.text.strip()
+        if not text:
+            return None
+        return prompt_section(
+            key="livingmemory.recall",
+            title="长期记忆",
+            source="livingmemory",
+            content=text,
+        )
 
     def _format_livingmemory_status(self) -> str:
         # Check for "我会牢牢记住你" (RememberYou) bridge first

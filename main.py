@@ -15091,6 +15091,21 @@ class PrivateCompanionPlugin(
                 metadata={"范围": "当前私聊会话", "触发": "记忆线索"},
             )
         add_spec(
+            "livingmemory.recall",
+            "livingmemory",
+            74,
+            lambda: self._format_livingmemory_recall_section(
+                event=event,
+                query=inbound_text,
+                is_private_chat=is_private_chat,
+            ),
+            timeout=min(1.4, max(0.3, _safe_float(getattr(self, "memory_companion_context_timeout_seconds", 1.2), 1.2, 0.2))),
+            metadata={
+                "范围": "当前私聊会话" if is_private_chat else "当前发言人",
+                "触发": "长期记忆桥接",
+            },
+        )
+        add_spec(
             "companion.planner",
             "companion",
             80,
